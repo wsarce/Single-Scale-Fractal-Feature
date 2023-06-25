@@ -9,7 +9,7 @@ def get_gradation_2d(start, stop, width, height, is_horizontal):
 
 
 def get_gradation_3d(width, height, start_list, stop_list, is_horizontal_list):
-    result = np.zeros((height, width, len(start_list)), dtype=np.float)
+    result = np.zeros((height, width, len(start_list)), dtype=float)
 
     for i, (start, stop, is_horizontal) in enumerate(zip(start_list, stop_list, is_horizontal_list)):
         result[:, :, i] = get_gradation_2d(start, stop, width, height, is_horizontal)

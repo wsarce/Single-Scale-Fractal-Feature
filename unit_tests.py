@@ -1,64 +1,119 @@
+import pathlib
+import time
+
 import arce_pierce_velcsov_dimension as apv
 import glob
 import os
 from PIL import Image
 import numpy as np
-import arce_pierce_velcsov_dimension as apv
 import matplotlib.pyplot as plt
 import sys
 import image_utilities as iu
 import timeit
 
 
-def known_fractals(sier_dir, srcp_dir):
+def known_fractals(sier_dir, srcp_dir, image_flag=-1, dimensions=None, experiment="default_name.png"):
     """
-
-    :param bmrk_dir:
-    :param sier_dir:
-    :param srcp_dir:
-    :return:
+    Calculate fractal dimension of known fractals with increasing iterations.
+    :param image_flag: int: The OpenCV flag to use when opening the images
+    :param sier_dir: str: The directory where the Sierpinski Triangle images are
+    :param srcp_dir: str: The directory where the Sierpinski Carpet images are
+    :return: None
     """
     print("Collecting images from the directory provided:", sier_dir, "&", srcp_dir)
     sier_files = []
-    sier_r, sier_g, sier_b, sier_c = [], [], [], []
     srcp_files = []
-    srcp_r, srcp_g, srcp_b, srcp_c = [], [], [], []
     sier_len = len(list(glob.iglob(sier_dir + '**/*', recursive=True)))
     srcp_len = len(list(glob.iglob(srcp_dir + '**/*', recursive=True)))
+    sier_data = None
+    srcp_data = None
+    sier_scales = []
+    srcp_scales = []
     current_file = 0
     for filename in glob.iglob(sier_dir + '**/*', recursive=True):
         if filename.endswith(".png"):
             current_file += 1
             sier_files.append(filename)
             print('\t', current_file, "/", sier_len, ":", filename)
+            sier_scales.append(int(pathlib.Path(filename).stem[4:]))
     current_file = 0
     for filename in glob.iglob(srcp_dir + '**/*', recursive=True):
         if filename.endswith(".png"):
             current_file += 1
             srcp_files.append(filename)
             print('\t', current_file, "/", srcp_len, ":", filename)
+            srcp_scales.append(int(pathlib.Path(filename).stem[4:]))
     for file in sier_files:
-        dim = apv.apv_dimension(file, image_flag=-1, bit_depth=255, invert=True, alpha_channel=True, alpha_index=None)
-        print(os.path.basename(file)[:-4], '\t', dim[2], '\t', dim[0], '\t', dim[1], '\t', dim[3])
-        sier_b.append(dim[0])
-        sier_g.append(dim[1])
-        sier_r.append(dim[2])
-        sier_c.append(dim[3])
+        dim = apv.apv_dimension(file, image_flag=image_flag, dimensions=dimensions,
+                                bit_depth=255, invert=True, alpha_channel=True, alpha_index=None)
+        if sier_data is None:
+            sier_data = [[] for _ in range(len(dim))]
+        dim_result = str(os.path.basename(file)[:-4])
+        for i, d in enumerate(dim):
+            dim_result = dim_result + "\t" + str(d)
+            sier_data[i].append(d)
+        print(dim_result)
     for file in srcp_files:
-        dim = apv.apv_dimension(file, image_flag=-1, bit_depth=255, invert=True, alpha_channel=True, alpha_index=None)
-        print(os.path.basename(file)[:-4], '\t', dim[2], '\t', dim[0], '\t', dim[1], '\t', dim[3])
-        srcp_b.append(dim[0])
-        srcp_g.append(dim[1])
-        srcp_r.append(dim[2])
-        srcp_c.append(dim[3])
-    return
+        dim = apv.apv_dimension(file, image_flag=image_flag, dimensions=dimensions,
+                                bit_depth=255, invert=True, alpha_channel=True, alpha_index=None)
+        if srcp_data is None:
+            srcp_data = [[] for _ in range(len(dim))]
+        dim_result = str(os.path.basename(file)[:-4])
+        for i, d in enumerate(dim):
+            dim_result = dim_result + "\t" + str(d)
+            srcp_data[i].append(d)
+        print(dim_result)
+    SMALL_SIZE = 10
+    MEDIUM_SIZE = 14
+    BIGGER_SIZE = 22
+
+    # plt.rc('font', size=SMALL_SIZE)  # controls default text sizes
+    plt.rc('axes', titlesize=SMALL_SIZE)  # fontsize of the axes title
+    plt.rc('axes', labelsize=SMALL_SIZE)  # fontsize of the x and y labels
+    plt.rc('xtick', labelsize=SMALL_SIZE)  # fontsize of the tick labels
+    plt.rc('ytick', labelsize=SMALL_SIZE)  # fontsize of the tick labels
+    plt.rc('legend', fontsize=SMALL_SIZE)  # legend fontsize
+    plt.rc('figure', titlesize=BIGGER_SIZE)  # fontsize of the figure title
+
+    plt.subplot(2, 1, 1)
+    plt.title("Sierpinski Carpet")
+    plt.xlabel("Number of Iterations")
+    plt.ylabel("Fractal Dimension")
+    if len(srcp_data) == 1:
+        line, = plt.plot(srcp_scales, srcp_data[0], color='black')
+    else:
+        labels = ['Blue', 'Green', 'Red', 'Black']
+        for i, d in enumerate(srcp_data):
+            line, = plt.plot(srcp_scales, d, color=labels[i].lower())
+            line.set_label(labels[i] if labels[i] != 'Black' else 'Composite')
+        plt.legend()
+    plt.grid()
+
+    plt.subplot(2, 1, 2)
+    plt.title("Sierpinski Triangle")
+    plt.xlabel("Number of Iterations")
+    plt.ylabel("Fractal Dimension")
+    if len(sier_data) == 1:
+        line, = plt.plot(sier_scales, sier_data[0], color='black')
+    else:
+        labels = ['Blue', 'Green', 'Red', 'Black']
+        for i, d in enumerate(sier_data):
+            line, = plt.plot(sier_scales, d, color=labels[i].lower())
+            line.set_label(labels[i] if labels[i] != 'Black' else 'Composite')
+            plt.legend()
+    plt.grid()
+    plt.tight_layout()
+    fig = plt.gcf()
+    fig.set_size_inches((8, 8), forward=False)
+    fig.savefig(experiment, dpi=500)  # Change is over here
+    plt.clf()
 
 
-def ivanovici_color_fractal(ivanovici_dir):
+def ivanovici_color_fractal(ivanovici_dir, experiment):
     """
 
-    :param ivanovici_dir:
-    :return:
+    :param ivanovici_dir: str: The directory that contains the Ivanovici images
+    :return: None
     """
     iv_cfd = [3.8286, 3.9134, 3.9113, 3.6373, 3.2692, 2.8623, 2.5673, 2.3573, 2.2372]
     print("Collecting images from the directory provided:", ivanovici_dir)
@@ -87,13 +142,13 @@ def ivanovici_color_fractal(ivanovici_dir):
         delta_g.append(iv_g[i + 1] - iv_g[i])
         delta_r.append(iv_r[i + 1] - iv_r[i])
         delta_c.append(iv_c[i + 1] - iv_c[i])
-    SMALL_SIZE = 16
-    MEDIUM_SIZE = 20
-    BIGGER_SIZE = 30
+    SMALL_SIZE = 10
+    MEDIUM_SIZE = 14
+    BIGGER_SIZE = 22
 
     # plt.rc('font', size=SMALL_SIZE)  # controls default text sizes
     plt.rc('axes', titlesize=SMALL_SIZE)  # fontsize of the axes title
-    plt.rc('axes', labelsize=MEDIUM_SIZE)  # fontsize of the x and y labels
+    plt.rc('axes', labelsize=SMALL_SIZE)  # fontsize of the x and y labels
     plt.rc('xtick', labelsize=SMALL_SIZE)  # fontsize of the tick labels
     plt.rc('ytick', labelsize=SMALL_SIZE)  # fontsize of the tick labels
     plt.rc('legend', fontsize=SMALL_SIZE)  # legend fontsize
@@ -135,8 +190,11 @@ def ivanovici_color_fractal(ivanovici_dir):
     line.set_label("Ivanovici Variation")
     plt.legend()
     plt.grid()
-
-    plt.show()
+    plt.tight_layout()
+    fig = plt.gcf()
+    fig.set_size_inches((8, 8), forward=False)
+    fig.savefig(f"{experiment} Comparison.png", dpi=500)  # Change is over here
+    plt.clf()
 
     plt.subplot(1, 2, 1)
     plt.title("Individual Color Channel CFD")
@@ -171,10 +229,11 @@ def ivanovici_color_fractal(ivanovici_dir):
     line.set_label("Red Variation")
     plt.legend()
     plt.grid()
-
-    plt.show()
-
-    return
+    plt.tight_layout()
+    fig = plt.gcf()
+    fig.set_size_inches((8, 8), forward=False)
+    fig.savefig(f"{experiment} Variation.png", dpi=500)  # Change is over here
+    plt.clf()
 
 
 def color_image_testing(generated_dir):
@@ -264,13 +323,13 @@ def color_image_testing(generated_dir):
         g_delta.append(g[i + 1] - g[i])
         c_delta.append(c[i + 1] - c[i])
 
-    SMALL_SIZE = 16
-    MEDIUM_SIZE = 20
-    BIGGER_SIZE = 30
+    SMALL_SIZE = 10
+    MEDIUM_SIZE = 14
+    BIGGER_SIZE = 22
 
-    #plt.rc('font', size=SMALL_SIZE)  # controls default text sizes
+    # plt.rc('font', size=SMALL_SIZE)  # controls default text sizes
     plt.rc('axes', titlesize=SMALL_SIZE)  # fontsize of the axes title
-    plt.rc('axes', labelsize=MEDIUM_SIZE)  # fontsize of the x and y labels
+    plt.rc('axes', labelsize=SMALL_SIZE)  # fontsize of the x and y labels
     plt.rc('xtick', labelsize=SMALL_SIZE)  # fontsize of the tick labels
     plt.rc('ytick', labelsize=SMALL_SIZE)  # fontsize of the tick labels
     plt.rc('legend', fontsize=SMALL_SIZE)  # legend fontsize
@@ -321,7 +380,10 @@ def color_image_testing(generated_dir):
     line.set_label("Dmax = 2.0 Variation")
     plt.legend()
 
-    plt.show()
+    fig = plt.gcf()
+    fig.set_size_inches((8, 8), forward=False)
+    fig.savefig("Color Image Testing.png", dpi=500)  # Change is over here
+    plt.clf()
 
 
 def segmented_virus_images(virus_dir):
@@ -364,8 +426,8 @@ def timing_tests():
     plt.xlabel("Image Size (px)")
     plt.ylabel("Execution Time (ms)")
     plt.grid()
-    plt.show()
-    return
+    plt.savefig("Execution Time Results.png")
+    plt.clf()
 
 
 def timed_function_256():
@@ -414,8 +476,16 @@ color_fractals = r'./CFIICC/'
 gen_images = r'./GENIMG/'
 virus_images = r'./VRSTR/'
 
-# timing_tests()
-# known_fractals(SIER_files, SRCP_files)
-# ivanovici_color_fractal(color_fractals)
+start_time = time.time()
+# Constrain fractal dimension
+known_fractals(SIER_files, SRCP_files, dimensions=[2.0], experiment="Constrained Dimension.png")
+# Test single-scale fractal feature
+known_fractals(SIER_files, SRCP_files, experiment="Full Dimension.png")
+
+ivanovici_color_fractal(color_fractals, experiment="Ivanovici")
 color_image_testing(gen_images)
-# segmented_virus_images(virus_images)
+segmented_virus_images(virus_images)
+fractal_time = time.time() - start_time
+print(f"Completed the single-scale fractal tests in {fractal_time} seconds!")
+
+timing_tests()

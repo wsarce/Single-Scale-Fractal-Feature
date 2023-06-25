@@ -1,6 +1,7 @@
 """ arce_pierce_velcsov_dimension.py
 Implementation of the proposed fractal dimension estimator in:
-[Reference]
+    Arce, W., Pierce, J. and Velcsov, M.T., 2021. A single-scale fractal feature for classification of color images: A
+        virus case study. Chaos, Solitons & Fractals, 147, p.110849.
 
 This method is a generalized form of the Minkowski-Bouligand, box-counting dimension, where epsilon is fixed at the
 total number of pixels in the image.  This allows for extremely precise estimations for square fractal structures,
@@ -119,7 +120,9 @@ def channel_fds(intensities, epsilon, dimensions=None):
         3: [5.0, 5.0, 5.0, 5.0],
     }
     if dimensions is None:
-        dimensions = supported_dims.get(len(intensities) - 1, "Invalid number of channels, try again.")
+        dimensions = supported_dims.get(len(intensities) - 1, None)
+        if dimensions is None:
+            raise ValueError("Image is unsupported, it has too many channels! Please try again!")
     for dimension, intensity in zip(dimensions, intensities):
         fd.append(channel_fd(dimension, intensity, epsilon))
     return fd
@@ -170,7 +173,7 @@ def apv_dimension(fractal, image_flag=1, bit_depth=255, invert=False, alpha_chan
     """
     assert image_flag == 'arr' or image_flag == 1 or image_flag == 0 or image_flag == -1, "Image format is not " \
                                                                                           "supported, try again."
-    if image_flag is not 'arr':
+    if image_flag != 'arr':
         img = cv2.imread(fractal, image_flag)
     else:
         img = fractal
